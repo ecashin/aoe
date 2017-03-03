@@ -1550,7 +1550,8 @@ addtgt(struct aoedev *d, char *addr, ulong nframes)
 	memcpy(t->addr, addr, sizeof t->addr);
 	t->ifp = t->ifs;
 	aoecmd_wreset(t);
-	t->maxout = t->nframes / 2;
+	if (t->nframes > 1)
+		t->maxout = t->nframes / 2;
 	INIT_LIST_HEAD(&t->ffree);
 	return *tt = t;
 
@@ -1653,6 +1654,11 @@ aoecmd_cfg_rsp(struct sk_buff *skb)
 	n = be16_to_cpu(ch->bufcnt);
 	if (n > aoe_maxout)	/* keep it reasonable */
 		n = aoe_maxout;
+	else if (n == 0) {
+		pr_warn_ratelimited("aoe: e%ld.%d has zero bufcnt %s\n",
+			aoemajor, h->minor, "and cannot be used");
+		return;
+	}
 
 	d = aoedev_by_aoeaddr(aoemajor, h->minor, 1);
 	if (d == NULL) {
